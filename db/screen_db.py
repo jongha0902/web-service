@@ -117,8 +117,8 @@ def get_screen_ordered_list_info() -> list[dict]:
                 """
                 SELECT screen_code, screen_name, screen_path, component_name, menu_order
                 FROM screens
-                WHERE use_yn = 'Y' AND menu_order IS NOT NULL
-                ORDER BY menu_order ASC
+                WHERE use_yn = 'Y'
+                ORDER BY CASE WHEN menu_order IS NULL THEN 1 ELSE 0 END, menu_order ASC
                 """
             ).fetchall()
             return { "items": [dict(row) for row in rows] }
@@ -163,7 +163,7 @@ def get_screens_with_permissions(permission_code: str, search: Optional[str] = N
                 sql += " AND (s.screen_name LIKE ? OR s.screen_path LIKE ?)"
                 params += [f"%{search}%", f"%{search}%"]
 
-            sql += " ORDER BY s.menu_order ASC"
+            sql += " ORDER BY CASE WHEN s.menu_order IS NULL THEN 1 ELSE 0 END, s.menu_order ASC"
             rows = conn.execute(sql, params).fetchall()
             return [dict(row) for row in rows]
     except Exception as e:
@@ -261,7 +261,7 @@ def get_screens_with_permissions_by_user(user_id: str) -> list[dict]:
                 FROM screens s
                 INNER JOIN screen_permissions sp ON s.screen_code = sp.screen_code
                 WHERE sp.permission_code = ? AND s.use_yn = 'Y'
-                ORDER BY s.menu_order ASC
+                ORDER BY CASE WHEN s.menu_order IS NULL THEN 1 ELSE 0 END, s.menu_order ASC
                 """,
                 (permission_code,)
             ).fetchall()

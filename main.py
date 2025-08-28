@@ -14,7 +14,7 @@ from utils.exception_handler import (
     handle_database_error
 )
 from utils.db_config import init_db, DatabaseError
-from routers import auth, user, screen, api, api_key, api_permission, usage_log, user_permission_type
+from routers import auth, user, screen, api, api_key, api_permission, usage_log, user_permission_type, gateway_log
 ACCESS_TOKEN_EXPIRE_MINUTES = Config.ACCESS_TOKEN_EXPIRE_MINUTES
 REFRESH_TOKEN_EXPIRE_DAYS = Config.REFRESH_TOKEN_EXPIRE_DAYS
 
@@ -67,6 +67,7 @@ app.include_router(api_key.router, prefix="")
 app.include_router(api_permission.router, prefix="")
 app.include_router(usage_log.router, prefix="")
 app.include_router(user_permission_type.router, prefix="")
+app.include_router(gateway_log.router, prefix="")
 
 @app.middleware("http")
 async def set_sliding_token_cookie(request: Request, call_next):

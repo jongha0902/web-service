@@ -10,7 +10,12 @@ def authenticate_user(user_id, password) -> Optional[dict]:
                 SELECT 
                     u.user_id, 
                     u.user_name, 
-                    u.use_yn,
+                    u.permission_code, 
+                    u.use_yn, 
+                    u.create_id, 
+                    u.create_date, 
+                    u.update_id, 
+                    u.update_date,
                     CASE WHEN k.api_key IS NOT NULL THEN TRUE ELSE FALSE END AS has_api_key
                 FROM users u
                 LEFT JOIN api_keys k ON u.user_id = k.user_id
