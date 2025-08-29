@@ -7,6 +7,9 @@ from schemas.api_schema import ApiCreateRequest, ApiUpdateRequest
 from db.usage_log_db import log_api_usage
 
 def create_api_service(data: ApiCreateRequest, login_id: str):
+    if is_existing_api_id(data.api_id):
+        raise HTTPException(400, f"API ID({data.api_id})가 이미 존재합니다.")
+    
     insert_api_list(data.model_dump(), login_id)
     res = {"message": f"입력하신 API({data.api_name}) 정보 등록을 성공하였습니다."}
     log_api_usage(login_id, "/apim/api", "POST", data.model_dump(), res, 200)
