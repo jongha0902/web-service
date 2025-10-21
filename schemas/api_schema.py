@@ -12,7 +12,6 @@ class ApiCreateRequest(BaseModel):
 class ApiUpdateRequest(BaseModel):
     api_name: str
     path: str
-    method: str
     use_yn: str
     description: str
     flow_data: str

@@ -14,7 +14,7 @@ from utils.exception_handler import (
     handle_database_error
 )
 from utils.db_config import init_db, DatabaseError
-from routers import auth, user, screen, api, api_key, api_permission, usage_log, user_permission_type, gateway_log
+from routers import overview, auth, user, screen, api, api_key, api_permission, usage_log, user_permission_type, gateway_log
 ACCESS_TOKEN_EXPIRE_MINUTES = Config.ACCESS_TOKEN_EXPIRE_MINUTES
 REFRESH_TOKEN_EXPIRE_DAYS = Config.REFRESH_TOKEN_EXPIRE_DAYS
 
@@ -59,6 +59,7 @@ app.add_exception_handler(Exception, handle_unexpected_exception)
 app.add_exception_handler(DatabaseError, handle_database_error)
 
 # ✅ 라우터 등록
+app.include_router(overview.router, prefix="")
 app.include_router(auth.router, prefix="")
 app.include_router(user.router, prefix="")
 app.include_router(screen.router, prefix="")

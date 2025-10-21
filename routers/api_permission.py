@@ -54,4 +54,5 @@ async def get_pending_permission_count_router(request: Request, _: str = Depends
 @router.post("/apim/api-permission-requests/{user_id}")
 async def request_api_permission_router(request: Request, user_id: str, _: str = Depends(verify_authentication)):
     data = await request.json()
+    print(data)
     return request_api_permission_service(user_id, data)

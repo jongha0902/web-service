@@ -12,7 +12,7 @@ def get_user_api_permissions(user_id: str):
                     al.method,
                     CASE WHEN ap.user_id IS NOT NULL THEN 1 ELSE 0 END AS has_permission
                 FROM api_list al
-                LEFT JOIN api_permissions ap ON al.api_id = ap.api_id AND ap.user_id = ?
+                LEFT JOIN api_permissions ap ON al.api_id = ap.api_id AND al.method = ap.method AND ap.user_id = ?
                 WHERE al.use_yn = 'Y'
                 ORDER BY al.api_id
             """, (user_id,))
@@ -20,7 +20,7 @@ def get_user_api_permissions(user_id: str):
     except Exception as e:
         raise DatabaseError(f"[유저 API 권한 조회 실패] {e}")
 
-def save_update_user_api_permissions(user_id: str, api_id_list: list, login_id: str) -> bool:
+def save_update_user_api_permissions(user_id: str, api_ids: list, login_id: str) -> bool:
     try:
         with get_conn() as conn:
             cursor = conn.cursor()
@@ -28,20 +28,22 @@ def save_update_user_api_permissions(user_id: str, api_id_list: list, login_id: 
             # 기존 권한 삭제
             cursor.execute("DELETE FROM api_permissions WHERE user_id = ?", (user_id,))
 
-            for api_id in api_id_list:
+            for api_info in api_ids:
+                api_id = api_info["api_id"]
+                method = api_info["method"]
                 # 권한 부여
                 cursor.execute("""
-                    INSERT INTO api_permissions (api_id, user_id, create_id, update_id)
-                    VALUES (?, ?, ?, ?)
-                """, (api_id, user_id, login_id, login_id))
+                    INSERT INTO api_permissions (api_id, method, user_id, create_id, update_id)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (api_id, method, user_id, login_id, login_id))
 
                 # PENDING 신청이 존재하는 경우만 APPROVED 처리
                 cursor.execute("""
                     SELECT request_id FROM api_permission_requests
-                    WHERE user_id = ? AND api_id = ? AND status = 'PENDING'
+                    WHERE user_id = ? AND api_id = ? AND method = ? AND status = 'PENDING'
                     ORDER BY request_date DESC
                     LIMIT 1
-                """, (user_id, api_id))
+                """, (user_id, api_id, method))
                 row = cursor.fetchone()
                 if row:
                     request_id = row["request_id"] if isinstance(row, dict) else row[0]
@@ -63,7 +65,7 @@ def has_user_api_permission(user_id: str, method: str, path: str) -> bool:
             cur = conn.execute("""
                 SELECT 1
                 FROM api_permissions p
-                JOIN api_list l ON p.api_id = l.api_id
+                JOIN api_list l ON p.api_id = l.api_id AND p.method = l.method
                 JOIN users u ON p.user_id = u.user_id
                 WHERE p.user_id = ?
                 AND l.method = ?
@@ -103,7 +105,7 @@ def get_permission_request_list(user_id=None, method=None, path=None, start_date
                     pr.response_date,
                     pr.memo
                 FROM api_permission_requests pr
-                JOIN api_list al ON pr.api_id = al.api_id
+                JOIN api_list al ON pr.api_id = al.api_id AND pr.method = al.method
                 WHERE 1=1
             """
             params = []
@@ -149,12 +151,12 @@ def approve_permission_request(request_id: int, login_id: str):
                 raise ValueError("대기 중인 요청이 없습니다.")
 
             # 해당 API에 대한 권한 부여
-            row = conn.execute("SELECT user_id, api_id FROM api_permission_requests WHERE request_id = ?", (request_id,)).fetchone()
+            row = conn.execute("SELECT user_id, api_id, method FROM api_permission_requests WHERE request_id = ?", (request_id,)).fetchone()
             if row:
                 conn.execute("""
-                    INSERT INTO api_permissions (api_id, user_id, create_id, update_id)
-                    VALUES (?, ?, ?, ?)
-                """, (row["api_id"], row["user_id"], login_id, login_id))
+                    INSERT INTO api_permissions (api_id, method, user_id, create_id, update_id)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (row["api_id"], row["method"], row["user_id"], login_id, login_id))
     except Exception as e:
         raise DatabaseError(f"[권한 승인 실패] {e}")
 
@@ -182,30 +184,31 @@ def is_existing_request_id(request_id: int) -> bool:
     except Exception as e:
         raise DatabaseError(f"[요청 권한 ID 확인 실패] {e}")
     
-def insert_permission_request(user_id: str, api_id: int, reason: str):
+def insert_permission_request(user_id: str, api_id: int, method: str, reason: str):
+    print(method)
     try:
         with get_conn() as conn:
             # 1. 이미 권한이 승인된 경우 차단
             existing_permission = conn.execute("""
                 SELECT 1 FROM api_permissions
-                WHERE user_id = ? AND api_id = ?
-            """, (user_id, api_id)).fetchone()
+                WHERE user_id = ? AND api_id = ? AND method = ?
+            """, (user_id, api_id, method)).fetchone()
             if existing_permission:
                 raise ValueError("이미 해당 API에 대한 권한이 승인되어 있습니다.")
 
             # 2. 이미 PENDING 상태의 신청이 있는 경우 차단
             existing_request = conn.execute("""
                 SELECT 1 FROM api_permission_requests
-                WHERE user_id = ? AND api_id = ? AND status = 'PENDING'
-            """, (user_id, api_id)).fetchone()
+                WHERE user_id = ? AND api_id = ? AND method = ? AND status = 'PENDING'
+            """, (user_id, api_id, method)).fetchone()
             if existing_request:
                 raise ValueError("이미 해당 API에 대한 신청이 진행 중입니다.")
 
             # 3. 새 신청 등록
             conn.execute("""
-                INSERT INTO api_permission_requests (user_id, api_id, memo)
-                VALUES (?, ?, ?)
-            """, (user_id, api_id, reason))
+                INSERT INTO api_permission_requests (user_id, api_id, method, memo)
+                VALUES (?, ?, ?, ?)
+            """, (user_id, api_id, method, reason))
 
     except Exception as e:
         raise DatabaseError(f"[API 권한 신청 실패] {e}")
@@ -232,13 +235,14 @@ def get_user_all_api_permissions(user_id: str):
                             FROM api_permission_requests pr
                             WHERE pr.user_id = ?
                             AND pr.api_id = al.api_id
+                            AND pr.method = al.method
                             ORDER BY pr.request_date DESC
                             LIMIT 1
                         )
                         ELSE NULL
                     END AS request_status
                 FROM api_list al
-                LEFT JOIN api_permissions ap ON al.api_id = ap.api_id AND ap.user_id = ?
+                LEFT JOIN api_permissions ap ON al.api_id = ap.api_id AND al.method = ap.method AND ap.user_id = ?
                 WHERE al.use_yn = 'Y'
                 ORDER BY al.api_id;
             """, (user_id, user_id))

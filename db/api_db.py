@@ -2,11 +2,12 @@ from utils.db_config import get_conn, DatabaseError
 import math
 
 # ✅ API 존재 여부 확인
-def is_existing_api_id(api_id: str) -> bool:
+def is_existing_api_id(api_id: str, method: str) -> bool:
+    print(method)
     try:
         with get_conn() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT COUNT(*) FROM api_list WHERE api_id = ?", (api_id,))
+            cur.execute("SELECT COUNT(*) FROM api_list WHERE api_id = ? and method = ? ", (api_id, method))
             return cur.fetchone()[0] > 0
     except Exception as e:
         raise DatabaseError(f"[API 존재 확인 실패] {e}")
@@ -23,28 +24,29 @@ def insert_api_list(data: dict, login_id: str):
         raise DatabaseError(f"[API 등록 실패] {e}")
 
 # ✅ API 수정
-def update_api_info(data: dict, api_id: str, login_id: str) -> bool:
+def update_api_info(api_id: str, method: str, data: dict, login_id: str) -> bool:
     try:
         with get_conn() as conn:
             cur = conn.execute("""
                 UPDATE api_list
-                SET api_name = ?, path = ?, method = ?, use_yn = ?, description = ?, flow_data = ?, update_id = ?, update_date = CURRENT_TIMESTAMP
+                SET api_name = ?, path = ?, use_yn = ?, description = ?, flow_data = ?, update_id = ?, update_date = CURRENT_TIMESTAMP
                 WHERE api_id = ?
-            """, (data["api_name"], data["path"], data["method"], data["use_yn"], data["description"], data["flow_data"], login_id, api_id))
+                  and method = ?
+            """, (data["api_name"], data["path"], data["use_yn"], data["description"], data["flow_data"], login_id, api_id, method))
             return cur.rowcount > 0
     except Exception as e:
         raise DatabaseError(f"[API 수정 실패] {e}")
 
 # ✅ API 삭제
-def delete_api_info(api_id) -> bool:
+def delete_api_info(api_id, method) -> bool:
     try:
         with get_conn() as conn:
             # API 삭제
-            cur = conn.execute("DELETE FROM api_list WHERE api_id = ?", (api_id,))
+            cur = conn.execute("DELETE FROM api_list WHERE api_id = ? and method = ?", (api_id, method))
             if cur.rowcount == 0:
-                raise ValueError(f"삭제하신 API({api_id})는 존재하지 않습니다.")
+                raise ValueError(f"삭제하신 API({api_id + '-' + method})는 존재하지 않습니다.")
             # 권한 삭제
-            conn.execute("DELETE FROM api_permissions WHERE api_id = ?", (api_id,))
+            conn.execute("DELETE FROM api_permissions WHERE api_id = ? and method = ?", (api_id, method))
 
             return cur.rowcount > 0
     except Exception as e:
@@ -82,7 +84,7 @@ def get_api_list_info(page: int = 1, per_page: int = 10, api_name: str = None, p
                            write_id, write_date, update_id, update_date
                     FROM api_list
                     {where_clause}
-                    ORDER BY path DESC
+                    ORDER BY write_date DESC
                 """
                 cursor.execute(query, params)
                 items = [dict(row) for row in cursor.fetchall()]
@@ -101,7 +103,7 @@ def get_api_list_info(page: int = 1, per_page: int = 10, api_name: str = None, p
                        write_id, write_date, update_id, update_date
                 FROM api_list
                 {where_clause}
-                ORDER BY path DESC
+                ORDER BY write_date DESC
                 LIMIT ? OFFSET ?
             """
             cursor.execute(query, params + [per_page, offset])

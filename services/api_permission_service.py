@@ -13,7 +13,7 @@ async def get_api_permissions_service(user_id, login_id):
     return JSONResponse(content=res, status_code=200)
 
 async def save_user_api_permissions_service(user_id, data, login_id):
-    api_ids = data.get("api_ids", [])
+    api_ids = data.get("permissions", [])
     if not is_existing_user_id(user_id):
         raise HTTPException(404, f"유저 ID({user_id})가 존재하지 않습니다.")
     if not isinstance(api_ids, list):
@@ -54,12 +54,13 @@ def get_pending_permission_count_service(login_id):
 
 def request_api_permission_service(user_id, data):
     api_id = data.get("api_id")
+    method = data.get("method")
     reason = data.get("reason", "").strip()
     if not api_id:
         raise HTTPException(400, "api_id는 필수입니다.")
     if not reason:
         raise HTTPException(400, "신청 사유는 필수입니다.")
-    insert_permission_request(user_id, api_id, reason)
+    insert_permission_request(user_id, api_id, method, reason)
     res = {"message": "API 권한 신청이 완료되었습니다."}
     log_api_usage(user_id, "/apim/user/api-permission-requests/{user_id}", "POST", {"data": data, "user_id": user_id}, res, 200)
     return JSONResponse(content=res, status_code=200)

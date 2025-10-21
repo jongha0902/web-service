@@ -129,17 +129,23 @@ async def init_db():
                 );
                                
                 CREATE TABLE IF NOT EXISTS gateway_logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id TEXT,
-                    service TEXT,
-                    method TEXT,
-                    path TEXT,
-                    query_param TEXT,
-                    body TEXT,
-                    status_code INTEGER,
-                    response TEXT,
-                    requested_at TEXT,
-                    responded_at TEXT
+                    log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT,                -- 요청자 ID (API 키 인증 결과)
+                    api_id TEXT,                 -- 호출된 API 코드 (ex. "RAG", "BID_INFO")
+                    method TEXT NOT NULL,        -- HTTP 메서드 (GET, POST 등)
+                    path TEXT NOT NULL,          -- 실제 호출된 경로 (ex. /rag, /bid-info)
+                    query_param TEXT,            -- Query string (key=value&key2=value2 ...)
+                    headers TEXT,                -- 요청 헤더 (JSON 직렬화)
+                    body TEXT,                   -- 요청 바디 (JSON 또는 raw string)
+                    status_code INTEGER,         -- 응답 상태 코드 (200, 403 등)
+                    response TEXT,               -- 응답 내용 (JSON 직렬화 또는 에러 메시지)
+                    requested_at TIMESTAMP NOT NULL,  -- 요청 시간 (ISO timestamp)
+                    responded_at TIMESTAMP NOT NULL,  -- 응답 시간 (ISO timestamp)
+                    latency_ms INTEGER,          -- 요청~응답 간 지연 시간(ms)
+                    client_ip TEXT,              -- 클라이언트 IP
+                    user_agent TEXT,             -- User-Agent 헤더
+                    is_success TEXT NOT NULL,    -- 'Y' (성공), 'N' (실패)
+                    error_message TEXT           -- 에러 메시지 (예외 발생 시)
                 );
 
             ''')

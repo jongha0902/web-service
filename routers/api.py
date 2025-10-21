@@ -11,15 +11,15 @@ async def create_api_router(payload: ApiCreateRequest, request: Request, _: str 
     login_id = request.state.user_id
     return create_api_service(payload, login_id)
 
-@router.put("/apim/api/{api_id}")
-async def update_api_router(api_id: str, payload: ApiUpdateRequest, request: Request, _: str = Depends(verify_authentication)):
+@router.put("/apim/api/{method}/{api_id}")
+async def update_api_router(api_id: str, method: str, payload: ApiUpdateRequest, request: Request, _: str = Depends(verify_authentication)):
     login_id = request.state.user_id
-    return update_api_service(api_id, payload, login_id)
+    return update_api_service(api_id, method, payload, login_id)
 
-@router.delete("/apim/api/{api_id}")
-async def delete_api_route(api_id: str, request: Request, _: str = Depends(verify_authentication)):
+@router.delete("/apim/api/{method}/{api_id}")
+async def delete_api_route(api_id: str, method: str, request: Request, _: str = Depends(verify_authentication)):
     login_id = request.state.user_id
-    return delete_api_service(api_id, login_id)
+    return delete_api_service(api_id, method, login_id)
 
 @router.get("/apim/api")
 async def get_api_list_router(
