@@ -65,7 +65,7 @@ def get_overview_stats() -> dict:
             """)
             daily_errors = [dict(row) for row in cur.fetchall()]
 
-            # 7. 많이 호출된 API TOP 5
+            # 7. 금일 많이 호출된 API TOP 5
             cur.execute("""
                 SELECT
                     al.api_id,
@@ -74,6 +74,7 @@ def get_overview_stats() -> dict:
                     COUNT(gl.log_id) as count
                 FROM gateway_logs gl
                 JOIN api_list al ON gl.path = al.path AND gl.method = al.method
+                WHERE DATE(gl.requested_at) = CURRENT_DATE
                 GROUP BY al.api_id, al.api_name, al.method
                 ORDER BY count DESC
                 LIMIT 5
@@ -84,20 +85,20 @@ def get_overview_stats() -> dict:
             cur.execute("SELECT COUNT(*) FROM api_permission_requests WHERE status = 'PENDING'")
             pending_requests = cur.fetchone()[0]
 
-            # 9. 최근 오류 발생 로그
+            # 9. 금일 오류 발생 로그
             cur.execute("""
                 SELECT 
                     gl.requested_at as time, 
-                    al.api_id,
-                    al.api_name,
-                    al.method,
+                    gl.api_id,
+                    IFNULL(al.api_name, '미등록 API') AS api_name,
+                    gl.method,
                     gl.status_code, 
                     gl.user_id
                 FROM gateway_logs gl
-                LEFT JOIN api_list al ON gl.api_id = al.api_id
+                LEFT JOIN api_list al ON gl.api_id = al.api_id AND gl.method = al.method
                 WHERE gl.status_code >= 400
+                AND DATE(gl.requested_at) = CURRENT_DATE
                 ORDER BY gl.requested_at DESC
-                LIMIT 20
             """)
             recent_errors = [dict(row) for row in cur.fetchall()]
 
