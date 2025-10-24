@@ -37,7 +37,7 @@ async def init_db():
                 );
 
                 CREATE TABLE IF NOT EXISTS api_list (
-                    api_id TEXT NOT NULL, -- PK 제약조건 제거, NOT NULL 추가
+                    api_id TEXT NOT NULL,
                     api_name TEXT NOT NULL,
                     path TEXT NOT NULL,
                     method TEXT NOT NULL, -- NOT NULL 추가
@@ -48,7 +48,7 @@ async def init_db():
                     write_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     update_id TEXT,
                     update_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (api_id, method) -- api_id와 method를 복합 기본 키로 지정
+                    PRIMARY KEY (api_id, method) 
                 );
 
                 CREATE TABLE IF NOT EXISTS api_permission_requests (
@@ -77,14 +77,14 @@ async def init_db():
                 CREATE TABLE IF NOT EXISTS api_usage_log (
                     log_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id TEXT NOT NULL,
-                    "path" TEXT NOT NULL,
+                    path TEXT NOT NULL,
                     method TEXT NOT NULL,
                     request_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     request_data TEXT,
                     response_data TEXT,
                     status_code INTEGER
                 );
-                CREATE INDEX IF NOT EXISTS api_usage_log_path_IDX ON api_usage_log ("path",user_id,"method",request_time);
+                CREATE INDEX IF NOT EXISTS api_usage_log_path_IDX ON api_usage_log (path, user_id, method, request_time);
 
                                
                 CREATE TABLE IF NOT EXISTS gateway_logs (
@@ -133,7 +133,8 @@ async def init_db():
                     create_id TEXT,
                     create_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     update_id TEXT,
-                    update_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, menu_order INTEGER DEFAULT NULL
+                    update_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+                    menu_order INTEGER DEFAULT NULL
                 );
 
                 CREATE TABLE IF NOT EXISTS user_permission_types (
