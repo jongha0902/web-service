@@ -37,7 +37,7 @@ async def login(request: Request, payload: LoginRequest):
         raise HTTPException(401, "아이디 또는 비밀번호가 올바르지 않습니다.")
 
     if user["use_yn"] == "N":
-            raise HTTPException(status_code=403, detail="비활성화된 계정입니다. 관리자에게 문의해주세요.")
+        raise HTTPException(status_code=403, detail="비활성화된 계정입니다. 관리자에게 문의해주세요.")
     
     access_token = create_access_token(payload.user_id)
     refresh_token = create_refresh_token(payload.user_id)
@@ -89,8 +89,8 @@ async def get_profile(
 
     user = get_user_info(user_id)
     if not user:
-        if silent:
-            return JSONResponse(status_code=200, content={"authenticated": False, "user": None})
+        # if silent:
+        #     return JSONResponse(status_code=200, content={"authenticated": False, "user": None})
         raise HTTPException(status_code=404, detail="사용자 정보를 찾을 수 없습니다.")
 
     return {"authenticated": True, "user": user} if silent else {"user": user}

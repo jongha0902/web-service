@@ -81,7 +81,7 @@ async def set_sliding_token_cookie(request: Request, call_next):
             httponly=True,
             secure=True,  # 운영 환경에서 반드시 True
             samesite="Lax",
-            max_age=60 * ACCESS_TOKEN_EXPIRE_MINUTES,
+            max_age=60 * ACCESS_TOKEN_EXPIRE_MINUTES, # 초 * 분
             path="/"
         )
 
@@ -92,7 +92,7 @@ async def set_sliding_token_cookie(request: Request, call_next):
             httponly=True,
             secure=True,
             samesite="Lax",
-            max_age=60 * 24 * REFRESH_TOKEN_EXPIRE_DAYS,  # 예: 7일
+            max_age=60 * 60 * 24 * REFRESH_TOKEN_EXPIRE_DAYS,  # 초 * 분 * 시 * 일
             path="/"
         )
 

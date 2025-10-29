@@ -70,61 +70,60 @@ async def verify_authentication(
     user_id = None
 
     # ✅ API Key 인증 우선
-    if authorization and authorization.startswith("ApiKey "):
-        api_key = authorization.replace("ApiKey ", "")
-        user_id = get_user_id_by_api_key(api_key)
-        if not user_id:
-            raise HTTPException(status_code=401, detail="유효하지 않은 API 키입니다.")
+    # if authorization and authorization.startswith("ApiKey "):
+    #     api_key = authorization.replace("ApiKey ", "")
+    #     user_id = get_user_id_by_api_key(api_key)
+    #     if not user_id:
+    #         raise HTTPException(status_code=401, detail="유효하지 않은 API 키입니다.")
+    #     if not is_active_user_id(user_id):
+    #         raise HTTPException(status_code=403, detail="비활성화된 계정입니다. 관리자에게 문의해주세요.")
+    #     request.state.user_id = user_id
+
+    # else:
+    
+    if not access_token and not refresh_token:
+        raise HTTPException(status_code=440, detail="⛔ 로그인 후 접근 가능한 페이지입니다.") 
+    # ✅ access_token 파싱
+    token = access_token
+    if not token:
+        raise HTTPException(status_code=419, detail="세션이 만료되었습니다. 다시 로그인 해주세요.")
+
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user_id = payload.get("sub")
+        exp_timestamp = payload.get("exp")
+
+        if not user_id or not exp_timestamp:
+            raise HTTPException(status_code=419, detail="세션이 만료되었습니다. 다시 로그인 해주세요.")
         if not is_active_user_id(user_id):
             raise HTTPException(status_code=403, detail="비활성화된 계정입니다. 관리자에게 문의해주세요.")
+
+        db_refresh_token = get_refresh_token(user_id)
+
+        # ✅ refresh token 아예 없음 (로그인 정보 초기화됨)
+        if not db_refresh_token:
+            raise HTTPException(status_code=440, detail="세션이 만료되었습니다. 다시 로그인 해주세요.")
+
+        if not refresh_token:
+            raise HTTPException(status_code=440, detail="세션이 만료되었습니다. 다시 로그인 해주세요.")
+
+        if db_refresh_token != refresh_token:
+            raise HTTPException(status_code=440, detail="다른 기기에서 로그인되어 현재 세션이 만료되었습니다.")
+
         request.state.user_id = user_id
 
-    else:
-        # ✅ 아예 로그인 정보 없음
-        if not access_token and not refresh_token:
-            raise HTTPException(status_code=440, detail="⛔ 로그인 후 접근 가능한 페이지입니다.") 
+        now = datetime.now(timezone.utc).timestamp()
+        if exp_timestamp - now < TOKEN_REFRESH_THRESHOLD_SECONDS:
+            new_token = jwt.encode({
+                "sub": user_id,
+                "exp": int(now + 60 * ACCESS_TOKEN_EXPIRE_MINUTES)
+            }, JWT_SECRET, algorithm=JWT_ALGORITHM)
+            request.state.new_access_token = new_token
 
-        # ✅ access_token 파싱
-        token = access_token
-        if not token:
-            raise HTTPException(status_code=419, detail="세션이 만료되었습니다. 다시 로그인 해주세요.")
-
-        try:
-            payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-            user_id = payload.get("sub")
-            exp_timestamp = payload.get("exp")
-
-            if not user_id or not exp_timestamp:
-                raise HTTPException(status_code=419, detail="세션이 만료되었습니다. 다시 로그인 해주세요.")
-            if not is_active_user_id(user_id):
-                raise HTTPException(status_code=403, detail="비활성화된 계정입니다. 관리자에게 문의해주세요.")
-
-            db_refresh_token = get_refresh_token(user_id)
-
-            # ✅ refresh token 아예 없음 (로그인 정보 초기화됨)
-            if not db_refresh_token:
-                raise HTTPException(status_code=440, detail="세션이 만료되었습니다. 다시 로그인 해주세요.")
-
-            if not refresh_token:
-                raise HTTPException(status_code=440, detail="세션이 만료되었습니다. 다시 로그인 해주세요.")
-
-            if db_refresh_token != refresh_token:
-                raise HTTPException(status_code=440, detail="다른 기기에서 로그인되어 현재 세션이 만료되었습니다.")
-
-            request.state.user_id = user_id
-
-            now = datetime.now(timezone.utc).timestamp()
-            if exp_timestamp - now < TOKEN_REFRESH_THRESHOLD_SECONDS:
-                new_token = jwt.encode({
-                    "sub": user_id,
-                    "exp": int(now + 60 * ACCESS_TOKEN_EXPIRE_MINUTES)
-                }, JWT_SECRET, algorithm=JWT_ALGORITHM)
-                request.state.new_access_token = new_token
-
-        except ExpiredSignatureError:
-            raise HTTPException(status_code=419, detail="세션이 만료되었습니다. 다시 로그인 해주세요.")
-        except InvalidTokenError:
-            raise HTTPException(status_code=419, detail="세션이 만료되었습니다. 다시 로그인 해주세요.")
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=419, detail="세션이 만료되었습니다. 다시 로그인 해주세요.")
+    except InvalidTokenError:
+        raise HTTPException(status_code=419, detail="세션이 만료되었습니다. 다시 로그인 해주세요.")
 
     # ✅ 공통 권한 검사
     # user_info = get_user_info(user_id)
@@ -136,7 +135,6 @@ async def verify_authentication(
 
     # ✅ 화면 접근 권한 검사
     #await verify_screen_access(request)
-
     return user_id
 
 
