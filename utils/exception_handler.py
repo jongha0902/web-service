@@ -28,7 +28,6 @@ def build_error_response(status_code: int, message: str, detail: any = None):
 async def log_exception_usage(request: Request, status_code: int, message: str, exc_detail: str = ""):
     try:
         login_id = getattr(request.state, "login_id", None) or request.headers.get("x-login-id")
-
         if request.method in ("POST", "PUT", "PATCH"):
             try:
                 body_bytes = await request.body()
@@ -72,7 +71,12 @@ async def log_exception_usage(request: Request, status_code: int, message: str, 
 # 1. FastAPI 내장 HTTPException
 async def handle_http_exception(request: Request, exc: HTTPException):
     logger.warning(f"[HTTPException] {exc.detail}")
-    await log_exception_usage(request, exc.status_code, str(exc.detail))
+    await log_exception_usage(
+        request, 
+        exc.status_code, 
+        str(exc.detail), 
+        exc_detail=f"{type(exc).__name__}: {exc.detail}"
+    )
     return build_error_response(exc.status_code, exc.detail)
 
 # 2. RequestValidationError (요청 유효성 오류)

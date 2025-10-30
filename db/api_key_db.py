@@ -2,6 +2,7 @@ from utils.db_config import get_conn, DatabaseError
 from utils.common import api_hash_key
 import math
 import secrets
+from typing import Optional
     
 def is_api_key_existing_id(user_id) -> bool:
     try:
@@ -21,7 +22,7 @@ def is_valid_api_key(user_id, key) -> bool:
     except Exception as e:
         raise DatabaseError(f"[API Key 유효성 검사 실패] {e}")
 
-def get_user_id_by_api_key(api_key: str) -> str | None:
+def get_user_id_by_api_key(api_key: str) -> Optional[str]:
     try:
         with get_conn() as conn:
             cursor = conn.cursor()
